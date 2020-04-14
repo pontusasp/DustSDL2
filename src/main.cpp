@@ -1,6 +1,9 @@
 #include "SDL.h"
 #include <stdio.h>
 #include <tgmath.h>
+#include <thread>
+
+#define THREADS 4
 
 #define SCREEN_WIDTH 1920
 #define SCREEN_HEIGHT 1080
@@ -65,12 +68,9 @@ int pollEvents()
     return 0;
 }
 
-double timePassed = 0;
-
-void updatePhysics(double deltaTime)
+void updateParticles(int particleAmount, int index, double& deltaTime, Particle*& particles, SDL_Point& mouse, SDL_Rect*& pp)
 {
-    timePassed = int(timePassed + deltaTime) % 10 + (timePassed + deltaTime) - int(timePassed + deltaTime);
-    for (int i = 0; i < NUM_OF_PARTICLES; i++)
+    for (int i = particleAmount * index; i < particleAmount * (index + 1); i++)
     {
         double* x = &particles[i].x;
         double* y = &particles[i].y;
@@ -113,6 +113,20 @@ void updatePhysics(double deltaTime)
         pp[i].x = (int)particles[i].x;
         pp[i].y = (int)particles[i].y;
     }
+}
+
+void updatePhysics(double deltaTime)
+{
+    int particleAmount = NUM_OF_PARTICLES / THREADS;
+    std::thread ts[THREADS];
+    Particle* p1 = (Particle*)particles;
+    SDL_Rect* p2 = (SDL_Rect*)pp;
+    for (int i = 0; i < THREADS; i++)
+    {
+        ts[i] = std::thread(updateParticles,std::ref(particleAmount), i, std::ref(deltaTime), std::ref(p1), std::ref(mouse), std::ref(p2));
+    }
+    for (int i = 0; i < THREADS; i++)
+        ts[i].join();
 }
 
 void drawToScreen(SDL_Renderer* renderer, double deltaTime)
