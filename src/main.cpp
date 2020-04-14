@@ -56,6 +56,10 @@ int pollEvents()
             break;
         case SDL_QUIT:
             return 1;
+        case SDL_KEYDOWN:
+            if (event.key.keysym.sym == SDLK_ESCAPE)
+                return 1;
+            else break;
         }
     }
     return 0;
