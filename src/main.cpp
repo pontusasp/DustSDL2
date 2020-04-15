@@ -9,7 +9,7 @@
 #define SCREEN_HEIGHT 1080
 #define PARTICLE_SIZE 1
 
-#define NUM_OF_PARTICLES 100000
+#define NUM_OF_PARTICLES 10000
 #define DISTANCE_UNIT 1
 
 #define COLOR_MAX 200
@@ -18,7 +18,7 @@
 #define GRAVITY 9.82
 
 SDL_Point mouse;
-SDL_Rect pp[NUM_OF_PARTICLES];
+SDL_Point pp[NUM_OF_PARTICLES];
 
 SDL_Rect screenRect;
 
@@ -69,7 +69,7 @@ int pollEvents()
     return 0;
 }
 
-void updateParticles(int particleAmount, int index, double& deltaTime, Particle*& particles, SDL_Point& mouse, SDL_Rect*& pp)
+void updateParticles(int particleAmount, int index, double& deltaTime, Particle*& particles, SDL_Point& mouse, SDL_Point*& pp)
 {
     for (int i = particleAmount * index; i < particleAmount * (index + 1); i++)
     {
@@ -130,7 +130,7 @@ void updatePhysics(double deltaTime)
     int particleAmount = NUM_OF_PARTICLES / THREADS;
     std::thread ts[THREADS];
     Particle* p1 = (Particle*)particles;
-    SDL_Rect* p2 = (SDL_Rect*)pp;
+    SDL_Point* p2 = (SDL_Point*)pp;
     for (int i = 0; i < THREADS; i++)
     {
         ts[i] = std::thread(updateParticles,std::ref(particleAmount), i, std::ref(deltaTime), std::ref(p1), std::ref(mouse), std::ref(p2));
@@ -152,11 +152,12 @@ void drawToScreen(SDL_Renderer* renderer, double deltaTime)
         COLOR_MIN,
         gravity? COLOR_MAX * 0.2 : COLOR_MIN * 0.6,
         gravity? COLOR_MIN * 0.3 : COLOR_MAX * 0.4,
-        255
+        80
     );
 
     //SDL_RenderDrawPoints(renderer, pp, NUM_OF_PARTICLES);
-    SDL_RenderFillRects(renderer, pp, NUM_OF_PARTICLES);
+    //SDL_RenderFillRects(renderer, pp, NUM_OF_PARTICLES);
+    SDL_RenderDrawLines(renderer, pp, NUM_OF_PARTICLES);
 
     SDL_RenderPresent(renderer);
 }
@@ -211,7 +212,7 @@ int main(int argc, char* argv[]) {
         particles[i].x = pp[i].x = (i % SCREEN_WIDTH);
         particles[i].y = pp[i].y = SCREEN_HEIGHT - (i / SCREEN_WIDTH);
 
-        pp[i].w = pp[i].h = PARTICLE_SIZE;
+        //pp[i].w = pp[i].h = PARTICLE_SIZE;
     }
 
     while (!gameloop(renderer));
