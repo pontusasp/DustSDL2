@@ -3,10 +3,11 @@
 #include <tgmath.h>
 #include <thread>
 
-#define THREADS 4
+#define THREADS 8
 
 #define SCREEN_WIDTH 1920
 #define SCREEN_HEIGHT 1080
+#define PARTICLE_SIZE 1
 
 #define NUM_OF_PARTICLES 100000
 #define DISTANCE_UNIT 1
@@ -76,15 +77,24 @@ void updateParticles(int particleAmount, int index, double& deltaTime, Particle*
         double* y = &particles[i].y;
         double* vx = &particles[i].vx;
         double* vy = &particles[i].vy;
+        double distX = (mouse.x - particles[i].x) * DISTANCE_UNIT;
+        double distY = (mouse.y - particles[i].y) * DISTANCE_UNIT;
 
         double deg = (double)atan2(mouse.y - particles[i].y, mouse.x - particles[i].x);
-        double distance = (double)(sqrt(pow(mouse.x - particles[i].x, 2) + pow(mouse.y - particles[i].y, 2)));
-        double f = (G * mouseMass) / (distance * DISTANCE_UNIT);
+        double distance = (double)(sqrt(pow(distX, 2) + pow(distY, 2)));
+        double f = (G * mouseMass) / distance;
+        double mod = f / distance;
 
         if (force)
         {
-            particles[i].vx += (double)(cos(deg) * f * deltaTime);
-            particles[i].vy += (double)(sin(deg) * f * deltaTime);
+            if (signbit(DISTANCE_UNIT * 150 - distance)) {
+                particles[i].vx += (double)(distX * mod * deltaTime);
+                particles[i].vy += (double)(distY * mod * deltaTime);
+            }
+            else {
+                particles[i].vx -= particles[i].vx / 2 * deltaTime;
+                particles[i].vy -= particles[i].vy / 2 * deltaTime;
+            }
         }
 
         if (gravity)
@@ -133,7 +143,7 @@ void drawToScreen(SDL_Renderer* renderer, double deltaTime)
 {
 
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_MUL);
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 20);
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 30);
     //SDL_RenderClear(renderer);
     SDL_RenderFillRect(renderer, &screenRect);
 
@@ -201,7 +211,7 @@ int main(int argc, char* argv[]) {
         particles[i].x = pp[i].x = (i % SCREEN_WIDTH);
         particles[i].y = pp[i].y = SCREEN_HEIGHT - (i / SCREEN_WIDTH);
 
-        pp[i].w = pp[i].h = 2;
+        pp[i].w = pp[i].h = PARTICLE_SIZE;
     }
 
     while (!gameloop(renderer));
