@@ -2,14 +2,15 @@
 #include <stdio.h>
 #include <tgmath.h>
 #include <thread>
+#include <omp.h>
 
 #define THREADS 8
 
 #define SCREEN_WIDTH 1920
 #define SCREEN_HEIGHT 1080
-#define PARTICLE_SIZE 1
+#define PARTICLE_SIZE 2
 
-#define NUM_OF_PARTICLES 10000
+#define NUM_OF_PARTICLES 200000
 #define DISTANCE_UNIT 1
 
 #define COLOR_MAX 200
@@ -17,8 +18,16 @@
 
 #define GRAVITY 9.82
 
+#define USE_OPENMP 1
+
+#define USE_RECT_PARTICLES 0
+
 SDL_Point mouse;
+#if USE_RECT_PARTICLES
+SDL_Rect pp[NUM_OF_PARTICLES];
+#else
 SDL_Point pp[NUM_OF_PARTICLES];
+#endif
 
 SDL_Rect screenRect;
 
@@ -69,7 +78,11 @@ int pollEvents()
     return 0;
 }
 
+#if USE_RECT_PARTICLES
+void updateParticles(int particleAmount, int index, double& deltaTime, Particle*& particles, SDL_Point& mouse, SDL_Rect*& pp)
+#else
 void updateParticles(int particleAmount, int index, double& deltaTime, Particle*& particles, SDL_Point& mouse, SDL_Point*& pp)
+#endif
 {
     for (int i = particleAmount * index; i < particleAmount * (index + 1); i++)
     {
@@ -128,15 +141,28 @@ void updateParticles(int particleAmount, int index, double& deltaTime, Particle*
 void updatePhysics(double deltaTime)
 {
     int particleAmount = NUM_OF_PARTICLES / THREADS;
-    std::thread ts[THREADS];
     Particle* p1 = (Particle*)particles;
+#if USE_RECT_PARTICLES
+    SDL_Rect* p2 = (SDL_Rect*)pp;
+#else
     SDL_Point* p2 = (SDL_Point*)pp;
+#endif
+
+#if !defined(_OPENMP) || !USE_OPENMP
+    std::thread ts[THREADS];
     for (int i = 0; i < THREADS; i++)
     {
         ts[i] = std::thread(updateParticles,std::ref(particleAmount), i, std::ref(deltaTime), std::ref(p1), std::ref(mouse), std::ref(p2));
     }
     for (int i = 0; i < THREADS; i++)
         ts[i].join();
+#else
+    #pragma omp parallel for
+    for (int i = 0; i < THREADS; i++)
+    {
+        updateParticles(particleAmount, i, deltaTime, p1, mouse, p2);
+    }
+#endif
 }
 
 void drawToScreen(SDL_Renderer* renderer, double deltaTime)
@@ -212,8 +238,18 @@ int main(int argc, char* argv[]) {
         particles[i].x = pp[i].x = (i % SCREEN_WIDTH);
         particles[i].y = pp[i].y = SCREEN_HEIGHT - (i / SCREEN_WIDTH);
 
-        //pp[i].w = pp[i].h = PARTICLE_SIZE;
+#if USE_RECT_PARTICLES
+        pp[i].w = pp[i].h = PARTICLE_SIZE;
+#endif
     }
+
+#if defined(_OPENMP) && USE_OPENMP
+    SDL_Log("Using OpenMP Threads.");
+    omp_set_num_threads(THREADS);
+    omp_set_dynamic(THREADS);
+#else
+    SDL_Log("Using OS Threads.");
+#endif
 
     while (!gameloop(renderer));
 
